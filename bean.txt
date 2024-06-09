@@ -1,0 +1,33 @@
+import mmcorej.CMMCore;
+import org.micromanager.Studio;
+
+// Obtain reference to MicroManager's core
+CMMCore core = Studio.getInstance().getCore();
+
+// Define functions to control the Arduino
+void turnAnalogOn(int laser) {
+    core.setSerialPortCommand("turnAnalogOn" + laser, "\n");
+}
+
+void turnAnalogOff(int laser) {
+    core.setSerialPortCommand("turnAnalogOff" + laser, "\n");
+}
+
+void setAnalogVoltage(int laser, float voltage) {
+    core.setSerialPortCommand("setAnalog" + laser + " " + voltage, "\n");
+}
+
+void turnTTLOn(int laser) {
+    core.setSerialPortCommand("turnTTLOn" + laser, "\n");
+}
+
+void turnTTLOff(int laser) {
+    core.setSerialPortCommand("turnTTLOff" + laser, "\n");
+}
+
+// Test sending commands to the Arduino
+turnAnalogOn(1);
+turnAnalogOff(2);
+setAnalogVoltage(3, 2.5);
+turnTTLOn(1);
+turnTTLOff(2);
