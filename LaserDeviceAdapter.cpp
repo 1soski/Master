@@ -5,6 +5,7 @@
 #include "ModuleInterface.h"
 #include <windows.h>
 #include <iostream> // Include iostream for cerr
+#include <iomanip>
 
 // Define Micro-Manager module API functions
 MODULE_API void InitializeModuleData() {
@@ -27,7 +28,7 @@ MODULE_API void DeleteDevice(MM::Device* pDevice) {
 }
 
 // Implementation of LaserDevice class methods
-LaserDevice::LaserDevice() : initialized_(false), portName_("COM5"), baudRate_(9600), serialPortHandle_(INVALID_HANDLE_VALUE), TTLOn_(0), TTLOn2_(0), TTLOn3_(0), analogOn_(0), intensity1_(0) {
+LaserDevice::LaserDevice() : initialized_(false), portName_("COM5"), baudRate_(9600), serialPortHandle_(INVALID_HANDLE_VALUE), TTLOn_(0), TTLOn2_(0), TTLOn3_(0), intensity1_(0), analogOn_(0) {
     CPropertyAction* pAct = new CPropertyAction(this, &LaserDevice::OnPort);
     CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
 
@@ -64,14 +65,17 @@ int LaserDevice::Initialize() {
 
     pAct = new CPropertyAction(this, &LaserDevice::OnIntensity1);
     CreateProperty("OnIntensity1", "4095", MM::Integer, false, pAct);
-    
+
     SetPropertyLimits("OnIntensity1", 0, 4095);
 
     SetIntensity1(4095);
 
     initialized_ = true;
     return DEVICE_OK;
+
 }
+
+
 
 int LaserDevice::Shutdown() {
     if (!initialized_)
@@ -114,7 +118,7 @@ int LaserDevice::TTLToggle(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
     if (eAct == MM::BeforeGet)
     {
-        pProp->Set("TTLOn");
+        pProp->Set((long)TTLOn_);
 
     }
     else if (eAct == MM::AfterSet) {
@@ -141,7 +145,7 @@ int LaserDevice::TTLToggle2(MM::PropertyBase* pProp, MM::ActionType eAct)
     if (eAct == MM::BeforeGet)
     {
         pProp->Set("TTLOn2");
-
+       
     }
     else if (eAct == MM::AfterSet) {
         const char* command;
@@ -154,7 +158,7 @@ int LaserDevice::TTLToggle2(MM::PropertyBase* pProp, MM::ActionType eAct)
             TTLOn2_ = 0;
         }
         long ttl2 = (long)TTLOn2_;
-    
+   
         SendSerialCommand(portName_.c_str(), command, "\n");
         pProp->Get(ttl2);      
     }
@@ -179,40 +183,25 @@ int LaserDevice::TTLToggle3(MM::PropertyBase* pProp, MM::ActionType eAct)
             TTLOn3_ = 0;
         }
         long ttl3 = (long)TTLOn3_;
-        
+       
         SendSerialCommand(portName_.c_str(), command, "\n");
-        pProp->Get(ttl3);   
+        pProp->Get(ttl3);  
     }
-    return DEVICE_OK;
-}
-
-int LaserDevice::AnalogToggle(MM::PropertyBase* pProp, MM::ActionType eAct)
-{
-    const char* command;
-    if (analogOn_ == 0) {
-        command = "turnAnalogOn1\n";
-        analogOn_ = 1;
-    }
-    else {
-        command = "turnAnalogOff1\n";
-        analogOn_ = 0;
-    }
-    SendSerialCommand(portName_.c_str(), command, "\n");
     return DEVICE_OK;
 }
 
 int LaserDevice::SetIntensity1(long intensity)
 {
+
+    //unsigned int intensity_int = static_cast<unsigned int>((intensity/100.0) * 4095);
     std::stringstream ss;
 
-    // Append the current intensity to the stringstream
-    ss << "I" << intensity;
+    ss << "setAnalog1 " << intensity;
 
-    // Prepend "setAnalog1 " before the existing stringstream content
-    std::string command = "setAnalog1 " + ss.str();
+   
 
     PurgeComPort(portName_.c_str());
-    int ret = SendSerialCommand(portName_.c_str(), command.c_str(), "\n");
+    int ret = SendSerialCommand(portName_.c_str(), ss.str().c_str(), "\n");
     if (ret != DEVICE_OK)
         return ret;
 
@@ -221,7 +210,8 @@ int LaserDevice::SetIntensity1(long intensity)
     if (ret != DEVICE_OK)
         return ret;
 
-    intensity1_ = atoi(answ.c_str());
+    //intensity1_ = atoi(answ.c_str());
+    //intensity_ = static_cast<double>(intensity_int) * 100.0 / 4095.0;
 
     return DEVICE_OK;
 }
@@ -236,10 +226,25 @@ int LaserDevice::OnIntensity1(MM::PropertyBase* pProp, MM::ActionType eAct)
     }
     else if (eAct == MM::AfterSet)
     {
-        long pos;
-        pProp->Get(pos);
-        return SetIntensity1(pos);
+        pProp->Get(intensity1_);
+        return SetIntensity1(intensity1_);
     }
+    return DEVICE_OK;
+}
+
+
+int LaserDevice::AnalogToggle(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+    const char* command;
+    if (analogOn_ == 0) {
+        command = "turnAnalogOn1\n";
+        analogOn_ = 1;
+    }
+    else {
+        command = "turnAnalogOff1\n";
+        analogOn_ = 0;
+    }
+    SendSerialCommand(portName_.c_str(), command, "\n");
     return DEVICE_OK;
 }
 
@@ -322,4 +327,3 @@ void LaserDevice::CloseSerialPort() {
         serialPortHandle_ = INVALID_HANDLE_VALUE;
     }
 }
-
